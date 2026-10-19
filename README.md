@@ -55,7 +55,7 @@ O modelo treinado é armazenado em um arquivo `.joblib`, permitindo sua reutiliz
 
 Além disso, foram implementados componentes Python para realizar inferências e identificar protocolos operacionais simulados. Esses componentes fornecem uma interface para integração posterior com agentes especializados.
 
-Na segunda etapa do projeto, está prevista a utilização do **OpenAI Agents SDK**, com agentes responsáveis pela análise de risco, consulta a protocolos, planejamento de respostas e orquestração do fluxo, utilizando ferramentas, handoffs, histórico de mensagens e validação de saída.
+Na segunda etapa do projeto, foi implementado um sistema multiagente com o **OpenAI Agents SDK**, com agentes responsáveis pela análise de risco, consulta a protocolos, planejamento de respostas e orquestração do fluxo, utilizando ferramentas (tools), handoffs, histórico de mensagens e validação estruturada de saída.
 
 O objetivo educacional é demonstrar como modelos supervisionados podem fornecer informações estruturadas para sistemas inteligentes compostos por múltiplos agentes.
 
@@ -80,7 +80,7 @@ Desenvolver uma solução experimental baseada em Machine Learning e arquitetura
 - Armazenar o modelo treinado para reutilização.
 - Desenvolver uma interface Python para inferência.
 - Implementar regras determinísticas para protocolos simulados.
-- Preparar a integração com o OpenAI Agents SDK.
+- Integrar o modelo treinado a um pipeline multiagente com OpenAI Agents SDK.
 
 ---
 
@@ -97,7 +97,9 @@ Desenvolver uma solução experimental baseada em Machine Learning e arquitetura
 | Seaborn | Biblioteca complementar de visualização |
 | Visual Studio Code | Ambiente de desenvolvimento |
 | Git e GitHub | Versionamento e colaboração |
-| OpenAI Agents SDK | Integração multiagente prevista na Parte 2 |
+| OpenAI Agents SDK | Sistema multiagente (handoffs, tools, sessão) |
+| python-dotenv | Carregamento de variáveis de ambiente |
+| Gemini (API OpenAI-compatible) | Modelo de linguagem dos agentes |
 
 As versões exatas das bibliotecas devem ser consultadas no ambiente de execução e registradas para reprodutibilidade.
 
@@ -137,6 +139,7 @@ Dentre os arquivos e pastas presentes na raiz do projeto, definem-se:
 |       |-- model_metrics.json
 |
 |-- src/
+|   |-- main.py
 |   |-- analysis/
 |   |   |-- model_visualization.py
 |   |
@@ -144,6 +147,12 @@ Dentre os arquivos e pastas presentes na raiz do projeto, definem-se:
 |   |   |-- agent_ml.py
 |   |   |-- protocol_agent.py
 |   |   |-- ml_interface.py
+|   |   |-- risk_agent.py
+|   |   |-- protocol_specialist.py
+|   |   |-- planner_agent.py
+|   |   |-- orchestrator.py
+|   |   |-- pipeline_context.py
+|   |   |-- response_schema.py
 |   |
 |   |-- data/
 |   |   |-- synthetic_data.csv
@@ -163,11 +172,10 @@ Dentre os arquivos e pastas presentes na raiz do projeto, definem-se:
 |       |-- train_model.py
 |       |-- avaliation_model.py
 |
+|-- .env.example
 |-- requirements.txt
 |-- README.md
 ```
-
-A organização poderá ser ampliada com os módulos da Parte 2.
 
 ---
 
@@ -478,16 +486,16 @@ As regras são independentes do treinamento do Random Forest.
 
 | ID | Condição simulada | Ação operacional |
 |---|---|---|
-| P01 | SpO2 < 88 | Suporte respiratório imediato |
-| P02 | Carga do sistema > 85 | Abrir unidades temporárias |
-| P03 | Frequência cardíaca > 120 | Monitoramento intensivo |
-| P04 | Eventos em 24h > 5 | Ativar equipe de resposta rápida |
-| P05 | Recursos < 30 | Redistribuir insumos |
-| P06 | Tempo de espera > 90 | Priorizar triagem |
-| P07 | Temperatura > 38 | Protocolo infeccioso simulado |
-| P08 | Densidade de eventos > 6 | Ativar plano de contingência |
-| P09 | Pressão sistólica < 90 | Protocolo de choque simulado |
-| P10 | Risco previsto = HIGH | Ativar estado de emergência simulado |
+| P01 | SpO2 < 88 | Se SPO2 < 88% → iniciar suporte respiratório imediato |
+| P02 | Carga do sistema > 85 | Se carga do sistema > 85% → abrir unidades temporárias |
+| P03 | Frequência cardíaca > 120 | Se FC > 120 → iniciar monitoramento intensivo |
+| P04 | Eventos em 24h > 5 | Se eventos_24h > 5 → ativar equipe de resposta rápida |
+| P05 | Recursos < 30 | Se disponibilidade_recursos < 30% → redistribuir insumos |
+| P06 | Tempo de espera > 90 | Se tempo_espera > 90 min → priorizar triagem emergencial |
+| P07 | Temperatura > 38 | Se temperatura > 38°C média → iniciar protocolo infeccioso |
+| P08 | Densidade de eventos > 6 | Se densidade_eventos > 6 → ativar plano de contingência |
+| P09 | Pressão sistólica < 90 | Se PA sistólica < 90 → iniciar protocolo de choque |
+| P10 | Risco previsto = HIGH | Se risco sistêmico alto → ativar estado de emergência |
 
 O protocolo P10 utiliza uma convenção acadêmica que associa a classificação `HIGH` ao risco sistêmico elevado.
 
@@ -532,46 +540,60 @@ Esses componentes são preparatórios e não substituem os agentes desenvolvidos
 
 ---
 
-## 🔗 Integração prevista — Parte 2
+## 🤖 Parte 2 — Sistema multiagente (OpenAI Agents SDK)
 
-A Parte 2 contempla o desenvolvimento de um sistema multiagente com OpenAI Agents SDK.
+Foi implementado um pipeline multiagente que consome o modelo treinado na Parte 1.
 
-### Agentes exigidos
+### Fluxo
 
-| Agente | Responsabilidade |
-|---|---|
-| Risk Analyst Agent | Consultar o modelo supervisionado e gerar o score |
-| Protocol Specialist Agent | Consultar os protocolos simulados |
-| Response Planner Agent | Consolidar informações e ações operacionais |
-| Orchestrator Agent | Coordenar o fluxo e realizar handoffs |
+```text
+Orquestrador
+    -> Analista de Risco (tool analyze_risk + modelo .joblib)
+    -> Especialista em Protocolos (tool analyze_protocols)
+    -> Planejador de Resposta (consolida e valida a saída)
+```
 
-O sistema deverá utilizar:
+### Agentes implementados
 
-- Tools para acesso às funções Python.
-- Handoffs entre os agentes especializados.
-- Histórico de mensagens.
-- Validação estruturada de saída.
-- Consolidação dos resultados.
+| Agente | Arquivo | Responsabilidade |
+|---|---|---|
+| CardioIA Orchestrator | `orchestrator.py` | Inicia o fluxo e faz handoff para o analista de risco |
+| Risk Analysis Agent | `risk_agent.py` | Consulta o modelo preditivo e gera o score |
+| Protocol Specialist Agent | `protocol_specialist.py` | Consulta a base de protocolos simulados |
+| Response Planning Agent | `planner_agent.py` | Consolida risco + protocolos e gera a recomendação final |
 
-### Interface de integração
+### Recursos do SDK utilizados
 
-A função pública de predição é:
+- **Tools:** `analyze_risk`, `analyze_protocols`, `get_pipeline_results`, `build_final_recommendation`
+- **Handoffs:** Orquestrador → Risco → Protocolos → Planejador
+- **Histórico de mensagens:** `SQLiteSession("cardioia_session")`
+- **Contexto compartilhado:** `PipelineContext` (caso, previsão ML, protocolos, recomendação)
+- **Validação de saída:** schema Pydantic `FinalRecommendation` em `response_schema.py`
+
+### Exemplo de saída (caso demo)
+
+```text
+RISCO PREVISTO: 0.99
+CLASSIFICACAO: HIGH
+
+PROTOCOLOS SUGERIDOS:
+- Se carga do sistema > 85% → abrir unidades temporárias
+- Se disponibilidade_recursos < 30% → redistribuir insumos
+- Se densidade_eventos > 6 → ativar plano de contingência
+- Se risco sistêmico alto → ativar estado de emergência
+```
+
+### Interface de integração do modelo
 
 ```python
 predict_risk(case_data: dict) -> dict
 ```
 
-Localização:
+Localização: `src/agents/ml_interface.py`
 
-`src/agents/ml_interface.py`
+O score numérico sempre vem do modelo supervisionado. Os agentes LLM apenas orquestram, interpretam e consolidam — sem inventar probabilidades.
 
-Essa função disponibiliza a inferência do modelo para integração com sistemas externos.
-
-O modelo supervisionado permanece responsável pelo cálculo da classificação e da probabilidade.
-
-Os agentes do OpenAI Agents SDK deverão consumir esses resultados, sem gerar ou substituir arbitrariamente os scores calculados.
-
-**Status:** integração com OpenAI Agents SDK a ser implementada e documentada na Parte 2.
+**Status:** Parte 2 implementada e validada com o caso sintético da atividade.
 
 ---
 
@@ -609,6 +631,22 @@ python -m venv .venv
 ```powershell
 python -m pip install -r requirements.txt
 ```
+
+### 3.1 Configurar a chave da API
+
+Copie o arquivo de exemplo e informe a chave do Gemini:
+
+```powershell
+copy .env.example .env
+```
+
+Edite `.env` e preencha:
+
+```text
+GEMINI_API_KEY=sua_chave_aqui
+```
+
+O arquivo `.env` não deve ser versionado.
 
 ### 4. Gerar os dados sintéticos
 
@@ -679,6 +717,22 @@ Também é gerado:
 `docs/images/model_metrics.json`
 
 Esse arquivo contém as métricas utilizadas na documentação.
+
+### 12. Executar o sistema multiagente (Parte 2)
+
+Caso de demonstração da atividade:
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+python src/main.py --demo
+```
+
+Modo interativo (informa as 10 features manualmente):
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+python src/main.py
+```
 
 ### Observação sobre a curva de aprendizado
 
