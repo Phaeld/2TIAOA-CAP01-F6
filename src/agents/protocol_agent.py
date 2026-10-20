@@ -17,64 +17,82 @@ class ProtocolAgent:
                 "feature": "average_spo2",
                 "operator": "<",
                 "threshold": 88,
-                "action": "Initiate immediate respiratory support"
+                "action": (
+                    "Se SPO2 < 88% → iniciar suporte respiratório imediato"
+                ),
             },
             {
                 "id": "P02",
                 "feature": "system_load",
                 "operator": ">",
                 "threshold": 85,
-                "action": "Open temporary care units"
+                "action": (
+                    "Se carga do sistema > 85% → abrir unidades temporárias"
+                ),
             },
             {
                 "id": "P03",
                 "feature": "average_hr",
                 "operator": ">",
                 "threshold": 120,
-                "action": "Initiate intensive monitoring"
+                "action": (
+                    "Se FC > 120 → iniciar monitoramento intensivo"
+                ),
             },
             {
                 "id": "P04",
                 "feature": "events_24h",
                 "operator": ">",
                 "threshold": 5,
-                "action": "Activate rapid response team"
+                "action": (
+                    "Se eventos_24h > 5 → ativar equipe de resposta rápida"
+                ),
             },
             {
                 "id": "P05",
                 "feature": "resource_availability",
                 "operator": "<",
                 "threshold": 30,
-                "action": "Redistribute medical supplies"
+                "action": (
+                    "Se disponibilidade_recursos < 30% → redistribuir insumos"
+                ),
             },
             {
                 "id": "P06",
                 "feature": "waiting_time",
                 "operator": ">",
                 "threshold": 90,
-                "action": "Prioritize emergency triage"
+                "action": (
+                    "Se tempo_espera > 90 min → priorizar triagem emergencial"
+                ),
             },
             {
                 "id": "P07",
                 "feature": "temperature",
                 "operator": ">",
                 "threshold": 38,
-                "action": "Initiate simulated infection protocol"
+                "action": (
+                    "Se temperatura > 38°C média → iniciar protocolo infeccioso"
+                ),
             },
             {
                 "id": "P08",
                 "feature": "event_density",
                 "operator": ">",
                 "threshold": 6,
-                "action": "Activate contingency plan"
+                "action": (
+                    "Se densidade_eventos > 6 → ativar plano de contingência"
+                ),
             },
             {
                 "id": "P09",
                 "feature": "systolic_bp",
                 "operator": "<",
                 "threshold": 90,
-                "action": "Initiate simulated shock protocol"
-            }
+                "action": (
+                    "Se PA sistólica < 90 → iniciar protocolo de choque"
+                ),
+            },
         ]
 
     def check_condition(self, value, operator, threshold):
@@ -144,7 +162,9 @@ class ProtocolAgent:
                 "feature": "risk_level",
                 "observed_value": "HIGH",
                 "condition": "risk_level == HIGH",
-                "action": "Activate simulated emergency state"
+                "action": (
+                    "Se risco sistêmico alto → ativar estado de emergência"
+                ),
             })
 
         # Build the structured agent response

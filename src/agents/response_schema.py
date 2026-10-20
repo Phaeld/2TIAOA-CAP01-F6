@@ -27,8 +27,8 @@ class FinalRecommendation(BaseModel):
     )
     disclaimer: str = Field(
         default=(
-            "Academic prototype using synthetic data. "
-            "This output is not a clinical diagnosis or medical advice."
+            "Prototipo academico com dados sinteticos. "
+            "Esta saida nao e diagnostico clinico nem orientacao medica."
         ),
         description="Limitations of the prototype"
     )

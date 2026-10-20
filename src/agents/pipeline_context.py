@@ -14,3 +14,4 @@ class PipelineContext:
     case_data: dict[str, Any] = field(default_factory=dict)
     ml_result: dict[str, Any] = field(default_factory=dict)
     protocol_result: dict[str, Any] = field(default_factory=dict)
+    final_recommendation: dict[str, Any] = field(default_factory=dict)
